@@ -16,7 +16,11 @@ async function bootstrap() {
 
   // Habilitar CORS
   app.enableCors({
-    origin: true,
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'https://aromastore.pages.dev',
+    ],
     credentials: true,
   });
 

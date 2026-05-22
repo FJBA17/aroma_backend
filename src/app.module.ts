@@ -20,17 +20,30 @@ import { UploadModule } from './modules/upload/upload.module';
     // TypeORM Configuration
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST'),
-        port: +configService.get('DB_PORT'),
-        username: configService.get('DB_USERNAME'),
-        password: configService.get('DB_PASSWORD'),
-        database: configService.get('DB_DATABASE'),
-        entities: [join(__dirname, '**', '*.entity.{ts,js}')],
-        synchronize: true, // Cambiar a false en producción
-        logging: false,
-      }),
+      useFactory: (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        if (databaseUrl) {
+          return {
+            type: 'postgres',
+            url: databaseUrl,
+            entities: [join(__dirname, '**', '*.entity.{ts,js}')],
+            synchronize: true,
+            logging: false,
+            ssl: { rejectUnauthorized: false },
+          };
+        }
+        return {
+          type: 'postgres',
+          host: configService.get('DB_HOST'),
+          port: +configService.get('DB_PORT'),
+          username: configService.get('DB_USERNAME'),
+          password: configService.get('DB_PASSWORD'),
+          database: configService.get('DB_DATABASE'),
+          entities: [join(__dirname, '**', '*.entity.{ts,js}')],
+          synchronize: true,
+          logging: false,
+        };
+      },
       inject: [ConfigService],
     }),
 
