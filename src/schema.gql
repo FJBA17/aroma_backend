@@ -1,0 +1,93 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Admin {
+  createdAt: DateTime!
+  email: String!
+  id: ID!
+  isActive: Boolean!
+  updatedAt: DateTime!
+}
+
+type AuthResponse {
+  accessToken: String!
+  admin: Admin!
+}
+
+input CreateAdminInput {
+  email: String!
+  password: String!
+}
+
+input CreateVinoInput {
+  descripcion: String!
+  fotos: [String!]
+  nombre: String!
+  precio: Float!
+  precioCaja: Float
+  precioMercado: Float
+  stock: Int!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type Mutation {
+  createAdmin(createAdminInput: CreateAdminInput!): Admin!
+  createVino(createVinoInput: CreateVinoInput!): Vino!
+  login(loginInput: LoginInput!): AuthResponse!
+  removeAdmin(id: String!): Admin!
+  removeVino(id: String!): Vino!
+  toggleVinoActive(id: String!): Vino!
+  updateAdmin(id: String!, updateAdminInput: UpdateAdminInput!): Admin!
+  updateVino(id: String!, updateVinoInput: UpdateVinoInput!): Vino!
+  updateVinoStock(cantidad: Int!, id: String!): Vino!
+}
+
+type Query {
+  admin(id: String!): Admin!
+  admins: [Admin!]!
+  me: Admin!
+  vino(id: String!): Vino!
+  vinos: [Vino!]!
+  vinosAdmin(includeInactive: Boolean! = false): [Vino!]!
+}
+
+input UpdateAdminInput {
+  email: String
+  isActive: Boolean
+  password: String
+}
+
+input UpdateVinoInput {
+  descripcion: String
+  fotos: [String!]
+  isActive: Boolean
+  nombre: String
+  precio: Float
+  precioCaja: Float
+  precioMercado: Float
+  stock: Int
+}
+
+type Vino {
+  createdAt: DateTime!
+  descripcion: String!
+  fotos: [String!]
+  id: ID!
+  isActive: Boolean!
+  nombre: String!
+  precio: Float!
+  precioCaja: Float
+  precioMercado: Float
+  stock: Int!
+  updatedAt: DateTime!
+}
