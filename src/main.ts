@@ -20,6 +20,7 @@ async function bootstrap() {
       'http://localhost:5173',
       'http://localhost:5174',
       'https://aromastore.pages.dev',
+      'https://aroma-admin.pages.dev',
     ],
     credentials: true,
   });
