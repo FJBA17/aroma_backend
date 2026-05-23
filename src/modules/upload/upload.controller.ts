@@ -1,13 +1,12 @@
 import { Controller, Post, UploadedFile, UseGuards, UseInterceptors, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { createClient } from '@supabase/supabase-js';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
-import axios from 'axios';
 
 @Controller('upload')
 export class UploadController {
-  private supabaseUrl: string;
-  private supabaseKey: string;
+  private supabase;
 
   constructor(private config: ConfigService) {
     const url = this.config.get<string>('SUPABASE_URL');
@@ -15,8 +14,7 @@ export class UploadController {
     if (!url || !key) {
       throw new Error('Supabase env vars missing: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY');
     }
-    this.supabaseUrl = url;
-    this.supabaseKey = key;
+    this.supabase = createClient(url, key);
   }
 
   @Post('vino-image')
@@ -27,30 +25,20 @@ export class UploadController {
 
     const ext = file.originalname.split('.').pop();
     const path = `vinos/${Date.now()}.${ext}`;
-    const bucket = 'images';
 
-    try {
-      await axios.post(
-        `${this.supabaseUrl}/storage/v1/object/${bucket}/${path}`,
-        file.buffer,
-        {
-          headers: {
-            Authorization: `Bearer ${this.supabaseKey}`,
-            'Content-Type': file.mimetype,
-            'x-upsert': 'true',
-          },
-          maxBodyLength: Infinity,
-        },
-      );
-    } catch (err: unknown) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? err.message
-        : String(err);
-      console.error('[Upload] Supabase error:', msg);
-      throw new InternalServerErrorException(`Supabase: ${msg}`);
+    const { error } = await this.supabase.storage
+      .from('images')
+      .upload(path, file.buffer, {
+        contentType: file.mimetype,
+        upsert: true,
+      });
+
+    if (error) {
+      console.error('[Upload] Supabase error:', error);
+      throw new InternalServerErrorException(`Supabase: ${error.message}`);
     }
 
-    const publicUrl = `${this.supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
-    return { url: publicUrl };
+    const { data } = this.supabase.storage.from('images').getPublicUrl(path);
+    return { url: data.publicUrl };
   }
 }
