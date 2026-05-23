@@ -1,37 +1,56 @@
-import { Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseGuards, UseInterceptors, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { createClient } from '@supabase/supabase-js';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
+import axios from 'axios';
 
 @Controller('upload')
 export class UploadController {
-  private supabase;
+  private supabaseUrl: string;
+  private supabaseKey: string;
 
   constructor(private config: ConfigService) {
-    this.supabase = createClient(
-      this.config.get<string>('SUPABASE_URL')!,
-      this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const url = this.config.get<string>('SUPABASE_URL');
+    const key = this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !key) {
+      throw new Error('Supabase env vars missing: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY');
+    }
+    this.supabaseUrl = url;
+    this.supabaseKey = key;
   }
 
   @Post('vino-image')
   @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('file'))
   async uploadVinoImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No se recibió ningún archivo');
+
     const ext = file.originalname.split('.').pop();
     const path = `vinos/${Date.now()}.${ext}`;
+    const bucket = 'images';
 
-    const { error } = await this.supabase.storage
-      .from('images')
-      .upload(path, file.buffer, {
-        contentType: file.mimetype,
-        upsert: true,
-      });
+    try {
+      await axios.post(
+        `${this.supabaseUrl}/storage/v1/object/${bucket}/${path}`,
+        file.buffer,
+        {
+          headers: {
+            Authorization: `Bearer ${this.supabaseKey}`,
+            'Content-Type': file.mimetype,
+            'x-upsert': 'true',
+          },
+          maxBodyLength: Infinity,
+        },
+      );
+    } catch (err: unknown) {
+      const msg = axios.isAxiosError(err)
+        ? err.response?.data?.message ?? err.message
+        : String(err);
+      console.error('[Upload] Supabase error:', msg);
+      throw new InternalServerErrorException(`Supabase: ${msg}`);
+    }
 
-    if (error) throw new Error(error.message);
-
-    const { data } = this.supabase.storage.from('images').getPublicUrl(path);
-    return { url: data.publicUrl };
+    const publicUrl = `${this.supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+    return { url: publicUrl };
   }
 }
